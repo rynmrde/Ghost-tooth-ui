@@ -101,8 +101,8 @@ ps5-payload-dev استفاده می‌کنند (`prospero-clang`، `lld`، sysro
 
 ```sh
 make deploy PS5_HOST=<ip-ps5>       # با prospero-deploy به پورت ۹۰۲۱
-# یا با هر لودری که دارید:
-cat build/ghost-tooth-ui.elf | nc <ip-ps5> 9021
+# یا با هر لودری که ELF خام را روی پورت پیلود می‌گیرد:
+nc <ip-ps5> 9021 < build/ghost-tooth-ui.elf
 ```
 
 این یک ELF معمولی است؛ مرحله‌ی `fself` یا PKG لازم ندارد. اگر `EMBED_PAYLOAD=0`

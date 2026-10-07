@@ -105,7 +105,13 @@ gh run download <run-id> -n ghost-tooth-ui-ps5                # the ELF
 # or, to kick off a build without pushing to main:
 gh workflow run build.yml --repo <you>/Ghost-tooth-ui --ref <branch>
 ```
-On a tag (`v0.1.0`) the portable ELF is published to the release page instead.
+In the web UI: **Actions → build → the run → Artifacts**. Artifacts expire
+(90 days by default), so for something permanent tag a release:
+
+```sh
+git tag -a v0.1.0 -m "Ghost Tooth UI" && git push --tags   # -> Releases asset
+```
+On a tag `v*` the portable ELF plus its sha256 is published to the release page.
 
 **2 · Build it locally (Linux, one command).** `make sdk` installs the
 [ps5-payload-dev](https://github.com/ps5-payload-dev/sdk) toolchain — the same
@@ -123,8 +129,8 @@ If you already have the SDK somewhere - a checkout you built, or a container
 that ships it - point at it instead of running `make sdk`:
 
 ```sh
-git clone --recursive https://github.com/ps5-payload-dev/sdk
-sudo make -C sdk DESTDIR=/opt/ps5-payload-sdk install
+git clone https://github.com/ps5-payload-dev/sdk
+sudo make -C sdk DESTDIR=/opt/ps5-payload-sdk install    # needs clang-18, lld-18
 export PS5_PAYLOAD_SDK=/opt/ps5-payload-sdk && make ps5
 ```
 
@@ -166,8 +172,8 @@ neither).
 
 ```sh
 make deploy PS5_HOST=<ps5-ip>          # prospero-deploy to the loader on :9021
-# or with any loader you already use:
-cat build/ghost-tooth-ui.elf | nc <ps5-ip> 9021
+# or with any loader that takes a raw ELF on the payload port:
+nc <ps5-ip> 9021 < build/ghost-tooth-ui.elf
 ```
 
 ## Using it from a shell
