@@ -1,0 +1,21 @@
+# Build output.  The repository ships sources, a generated icon and docs only.
+build/
+*.o
+*.elf
+!tools/*.elf
+
+# ghost-toothAPI.elf is tracked in this repository already, so it is not
+# *ignored* - but nothing else of that kind belongs here: any other copy of
+# someone's payload dropped next to the Makefile for an EMBED_PAYLOAD=1 build
+# stays out of new commits.
+/ghost-toothAPI.elf.*
+*.elf.tmp
+
+# Editor / tool noise
+*.swp
+*~
+.DS_Store
+compile_commands.json
+
+# built ELFs and their checksums (make dist / make ps5)
+dist/

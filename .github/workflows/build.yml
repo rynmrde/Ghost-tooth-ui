@@ -1,0 +1,121 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # The host build is where the payload bridge actually gets tested: the unit
+  # tests feed real ghost-toothAPI log lines through the parser, and the API
+  # smoke test drives the whole UI loop against a mock payload.
+  host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make host
+
+      - name: Test
+        run: make test
+
+      - name: Check the tile icon is a real 512x512 PNG
+        run: python3 tools/gt-check-icon.py assets/icon0.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghost-tooth-ui-host
+          path: build/ghost-tooth-ui
+
+  # The console binary. Built with the packaged ps5-payload-dev toolchain - the
+  # same tarball the websrv/elfldr payloads use - because it is the one layout
+  # that ships a generated toolchain/prospero.mk plus prospero-clang, lld and
+  # the stub libraries. A plain `git clone` of ps5-payload-dev/sdk is NOT
+  # enough: those files are produced by `make install`.
+  ps5:
+    runs-on: ubuntu-latest
+    env:
+      PS5_PAYLOAD_SDK: /opt/ps5-payload-sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the payload toolchain
+        run: |
+          set -e
+          curl -fL --retry 3 -o /tmp/ps5-payload-dev.tar.gz \
+            https://github.com/ps5-payload-dev/pacbrew-repo/releases/latest/download/ps5-payload-dev.tar.gz
+          sudo tar xf /tmp/ps5-payload-dev.tar.gz -C /
+          test -f "$PS5_PAYLOAD_SDK/toolchain/prospero.mk"
+          test -x "$PS5_PAYLOAD_SDK/bin/prospero-clang"
+          ls -l "$PS5_PAYLOAD_SDK/bin" | head -5
+
+      - name: Build (portable - expects ghost-toothAPI.elf on the console)
+        run: |
+          set -e
+          make -B ps5 EMBED_PAYLOAD=0
+          mkdir -p dist
+          cp build/ghost-tooth-ui.elf dist/ghost-tooth-ui.elf
+
+      # The self-contained variant embeds the ghost-toothAPI.elf that lives in
+      # this repository, so the UI can publish the payload to /data itself.
+      - name: Build (self-contained - payload embedded)
+        run: |
+          set -e
+          make -B ps5 EMBED_PAYLOAD=1
+          cp build/ghost-tooth-ui.elf dist/ghost-tooth-ui-selfcontained.elf
+
+      - name: Sanity check the ELF
+        run: |
+          set -e
+          for f in dist/*.elf; do
+            echo "== $f"
+            ls -l "$f"
+            readelf -h "$f" | egrep 'Class|Machine|Type|Entry'
+            readelf -d "$f" | egrep 'NEEDED|Shared library' || true
+            size "$f"
+          done
+
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum *.elf | tee ghost-tooth-ui.elf.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghost-tooth-ui-ps5
+          path: |
+            dist/ghost-tooth-ui.elf
+            dist/ghost-tooth-ui.elf.sha256
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghost-tooth-ui-ps5-selfcontained
+          path: dist/ghost-tooth-ui-selfcontained.elf
+          if-no-files-found: error
+
+  release:
+    needs: [ps5, host]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ghost-tooth-ui-ps5
+          path: out
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/ghost-tooth-ui.elf
+            out/ghost-tooth-ui.elf.sha256
+          body: |
+            Load `ghost-tooth-ui.elf` **once** through your payload loader; it
+            registers the Ghost Tooth tile on the Media tab and starts the
+            headset picker. This build expects `ghost-toothAPI.elf` to already
+            be in `/data/ghost-toothAPI/`; the self-contained variant (with the
+            payload embedded) is attached to the matching Actions run under
+            `ghost-tooth-ui-ps5-selfcontained`. See the README for what this
+            payload does and does not do.

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#061027">
+<title>Ghost Tooth</title>
+<link rel="icon" href="/icon0.png">
+<link rel="stylesheet" href="/main.css">
+</head>
+<body>
+<div id="shell">
+
+  <header id="topbar">
+    <div class="brand">
+      <img src="/icon0.png" alt="" class="brand-icon">
+      <div class="brand-text">
+        <h1>Ghost Tooth</h1>
+        <p class="sub" data-i18n="subtitle">Bluetooth headset audio for PS5</p>
+      </div>
+    </div>
+
+    <div class="pills" id="pills">
+      <div class="pill" id="pill-payload"><span class="dot"></span><b data-i18n="payload">Payload</b><em id="payload-state">—</em></div>
+      <div class="pill" id="pill-link"><span class="dot"></span><b data-i18n="link">Headset</b><em id="link-state">—</em></div>
+      <div class="pill" id="pill-pick"><span class="dot"></span><b data-i18n="selection">Selection</b><em id="pick-state">—</em></div>
+    </div>
+
+    <div class="top-actions">
+      <button class="ghost" id="btn-lang" tabindex="0">فارسی</button>
+      <button class="ghost" id="btn-help" tabindex="0" data-i18n="help">Help</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden>
+    <span id="banner-text"></span>
+    <button class="ghost tiny" id="banner-close" tabindex="0">✕</button>
+  </div>
+
+  <main id="content">
+
+    <section class="panel" id="devices-panel" aria-labelledby="devices-title">
+      <div class="panel-head">
+        <h2 id="devices-title" data-i18n="devices">Bluetooth devices</h2>
+        <span class="count" id="device-count"></span>
+        <div class="spacer"></div>
+        <button class="primary" id="btn-scan" tabindex="0">
+          <span class="kbd">▲</span><span data-i18n="scan">Scan for devices</span>
+        </button>
+      </div>
+
+      <p class="hint" data-i18n="devicesHint">
+        The list is what ghost-toothAPI's own inquiry pass heard. Put the
+        headset in pairing mode, then scan.
+      </p>
+
+      <ul id="device-list" class="cards" role="listbox" aria-label="Bluetooth devices"></ul>
+
+      <div class="manual">
+        <h3 data-i18n="manual">Connect an address by hand</h3>
+        <form id="manual-form" autocomplete="off">
+          <input id="manual-addr" type="text" inputmode="text" spellcheck="false"
+                 placeholder="AA:BB:CC:DD:EE:FF" aria-label="Bluetooth address"
+                 maxlength="17" tabindex="0">
+          <button type="submit" class="primary" tabindex="0" data-i18n="connect">Connect</button>
+        </form>
+        <p class="hint small" data-i18n="manualHint">
+          Any address from the log works, even one that is not in the list.
+        </p>
+      </div>
+    </section>
+
+    <aside id="side">
+      <section class="panel" id="status-panel" aria-labelledby="status-title">
+        <div class="panel-head">
+          <h2 id="status-title" data-i18n="status">Status</h2>
+          <div class="spacer"></div>
+          <span class="badge" id="op-badge" hidden></span>
+        </div>
+        <dl class="kv" id="status-grid"></dl>
+        <div class="row-actions">
+          <button id="btn-apply" tabindex="0" data-i18n="apply">Restart payload</button>
+          <button id="btn-stop" tabindex="0" data-i18n="stop">Stop payload</button>
+          <button id="btn-auto" tabindex="0" data-i18n="auto">Let it pick</button>
+          <button id="btn-forget" tabindex="0" data-i18n="forget">Forget pairing</button>
+        </div>
+      </section>
+
+      <section class="panel" id="log-panel" aria-labelledby="log-title">
+        <div class="panel-head">
+          <h2 id="log-title" data-i18n="log">Console log</h2>
+          <div class="spacer"></div>
+          <span class="count" data-i18n="logHint">live</span>
+        </div>
+        <pre id="log" tabindex="0" aria-live="polite"></pre>
+      </section>
+    </aside>
+  </main>
+
+  <dialog id="help">
+    <h2 data-i18n="helpTitle">Using Ghost Tooth</h2>
+    <ol class="steps" id="help-steps"></ol>
+    <div class="keys" id="help-keys"></div>
+    <form method="dialog">
+      <button class="primary" tabindex="0" data-i18n="close">Close</button>
+    </form>
+  </dialog>
+
+  <div id="busy" hidden><div class="spinner"></div><span data-i18n="working">Working…</span></div>
+</div>
+<script src="/main.js"></script>
+</body>
+</html>
