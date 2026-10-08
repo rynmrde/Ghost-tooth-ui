@@ -19,3 +19,7 @@ compile_commands.json
 
 # built ELFs and their checksums (make dist / make ps5)
 dist/
+
+# python tooling scratch (tools/*.py are run, never imported)
+__pycache__/
+*.py[cod]
