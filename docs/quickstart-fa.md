@@ -89,6 +89,18 @@ artifact ها بعد از ۹۰ روز پاک می‌شوند؛ بیلدِ راس
 git clone -b elf --depth 1 https://github.com/<you>/Ghost-tooth-ui.git
 # یا:  curl -LO https://github.com/<you>/Ghost-tooth-ui/raw/elf/ghost-tooth-ui.elf
 ```
+قبل از اینکه فایل را روی کنسول بگذاری، می‌شود راستی‌آزمایی‌اش کرد (هیچ ابزاری
+نمی‌خواهد):
+
+```sh
+python3 tools/gt-check-elf.py ghost-tooth-ui.elf --payload ghost-toothAPI.elf
+```
+این فایل را مستقیم می‌خواند و نکات تعیین‌کننده را چک می‌کند: ELF64/x86-64
+بودن، PIE بودن، بخش‌های page-aligned، همه‌ی relocation ها position-independent،
+import ها ماژول‌های PS5 باشند نه libc دسکتاپ، و اینکه خودِ UI (مارک‌آپ، CSS،
+parser لاگ، ثبت کاشی) واقعاً داخل باینری هست. CI هم همین را روی artifact ها
+اجرا می‌کند.
+
 (برای این branch باید در Settings → Actions → General → Workflow permissions
 گزینه‌ی Read and write روشن باشد؛ اگر نباشد workflow فقط warning می‌دهد.)
 روی tag های `v*` نسخه‌ی قابل حمل در Releases منتشر می‌شود.

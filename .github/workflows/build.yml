@@ -69,8 +69,9 @@ jobs:
           make -B ps5 EMBED_PAYLOAD=1
           cp build/ghost-tooth-ui.elf dist/ghost-tooth-ui-selfcontained.elf
 
-      # Not a cosmetic check: every one of these can fail, and a failure here
-      # means the artifact that people load onto a console is wrong.
+      # Not a cosmetic check: every property here is one that decides whether
+      # the file loads on a console at all, and the same tool is available to
+      # anyone who downloads a build from somewhere else.
       - name: Verify the ELFs
         run: |
           set -euo pipefail
@@ -78,29 +79,10 @@ jobs:
             echo "== $f"
             ls -l "$f"
             readelf -h "$f" | egrep 'Class|Machine|Type|Entry'
-            readelf -d "$f" | egrep 'NEEDED|Shared library' || true
+            readelf -d "$f" | egrep 'NEEDED' || true
             size "$f"
-            # A payload ELF: ELF64, x86-64, position independent.
-            hdr=$(readelf -h "$f")
-            echo "$hdr" | grep -q 'Class:.*ELF64'
-            echo "$hdr" | grep -q 'Machine:.*Advanced Micro Devices X86-64'
-            echo "$hdr" | grep -q 'Type:.*DYN'
-          # The UI, the tile registration and the log parser must have survived
-          # -ffunction-sections + --gc-sections, or the payload is a hollow shell.
-          strings -a "$f" | grep -q 'applicationCategoryType'
-          strings -a "$f" | grep -q -- '--uninstall-tile'
-          strings -a "$f" | grep -q 'avdtp: streaming'
           done
-          python3 - <<'PY'
-          payload = open("ghost-toothAPI.elf", "rb").read()
-          embed = open("dist/ghost-tooth-ui-selfcontained.elf", "rb").read()
-          plain = open("dist/ghost-tooth-ui.elf", "rb").read()
-          assert payload in embed, "the embedded image is not byte-identical to ghost-toothAPI.elf"
-          assert payload not in plain, "EMBED_PAYLOAD=0 still contains the payload"
-          assert len(embed) - len(plain) > len(payload) // 2, "size delta too small for an embed"
-          print(f"embed ok: payload {len(payload)} B is byte-identical inside the"
-                f" self-contained build ({len(embed)} B vs {len(plain)} B)")
-          PY
+          python3 tools/gt-check-elf.py dist/*.elf --payload ghost-toothAPI.elf
 
       - name: Checksums
         run: |

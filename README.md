@@ -165,6 +165,26 @@ docker run --rm -v "$PWD":/work -w /work debian:bookworm-slim bash -c \
 (That is exactly what the `ps5` job in CI does, on a runner that already has
 `curl` and `tar`.)
 
+### Check what you downloaded
+
+A payload cannot be run on a PC, so before you put a build on the console:
+
+```sh
+python3 tools/gt-check-elf.py dist/*.elf --payload ghost-toothAPI.elf
+```
+
+It parses the ELF directly (no toolchain, no `readelf` needed) and checks the
+properties that decide whether the console can load the file at all: ELF64 /
+x86-64 / `ET_DYN`; page-aligned `PT_LOAD` segments that stay inside the file
+and contain the entry point; *only* position-independent relocations (one
+absolute `R_X86_64_64` and the loader's mapping jumps into the void); the
+imports are `libkernel_web` / `libSceLibcInternal` / `libSceNet` and no desktop
+libc is among them; and that the UI itself is really inside - the picker
+markup, the stylesheet, the poll loop, the tile registration, the log parser.
+With `--payload` it also says which variant you have, by finding
+`ghost-toothAPI.elf` verbatim or not at all. The `ps5` CI job runs it on both
+artifacts before uploading, so a red run means an unshippable binary.
+
 ### What the two ELF variants mean
 
 `EMBED_PAYLOAD=1` (the default for a local build, since `ghost-toothAPI.elf`
