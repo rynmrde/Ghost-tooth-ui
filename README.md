@@ -92,7 +92,10 @@ binary, and only the last two need a machine of your own.
 
 **1 · Let CI build it.** The [`build` workflow](.github/workflows/build.yml)
 runs `make ps5` in the official toolchain for every push to `main`, every pull
-request and every manual run, and uploads two artifacts:
+request and every manual run, *verifies* the result (ELF64 / x86-64 / PIE, the
+tile-registration and log-parser strings still present after `--gc-sections`,
+and for the embedded build that the payload image inside it is byte-identical to
+`ghost-toothAPI.elf`), and uploads two artifacts:
 
 | artifact | what it is |
 | --- | --- |
@@ -106,12 +109,20 @@ gh run download <run-id> -n ghost-tooth-ui-ps5                # the ELF
 gh workflow run build.yml --repo <you>/Ghost-tooth-ui --ref <branch>
 ```
 In the web UI: **Actions → build → the run → Artifacts**. Artifacts expire
-(90 days by default), so for something permanent tag a release:
+(90 days by default), so there are two permanent routes:
 
 ```sh
+# the rolling "latest verified build" branch, written by the ps5 job
+git clone -b elf --depth 1 https://github.com/<you>/Ghost-tooth-ui.git
+curl -LO https://github.com/<you>/Ghost-tooth-ui/raw/elf/ghost-tooth-ui.elf
+# or a release, built from a tag you control
 git tag -a v0.1.0 -m "Ghost Tooth UI" && git push --tags   # -> Releases asset
 ```
-On a tag `v*` the portable ELF plus its sha256 is published to the release page.
+The `elf` branch holds `ghost-tooth-ui.elf`, `ghost-tooth-ui-selfcontained.elf`
+and `ghost-tooth-ui.elf.sha256`, force-pushed on every run; it needs
+*Settings → Actions → General → Workflow permissions → Read and write*, and the
+job only warns if that is not enabled. On a tag `v*` the portable ELF plus its
+sha256 is published to the release page instead.
 
 **2 · Build it locally (Linux, one command).** `make sdk` installs the
 [ps5-payload-dev](https://github.com/ps5-payload-dev/sdk) toolchain — the same

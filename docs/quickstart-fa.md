@@ -82,6 +82,15 @@ gh run download <run-id> -n ghost-tooth-ui-ps5
 
 دو artifact ساخته می‌شود: `ghost-tooth-ui-ps5` (ELF قابل حمل + sha256) و
 `ghost-tooth-ui-ps5-selfcontained` (همان ELF با `ghost-toothAPI.elf` داخلش).
+artifact ها بعد از ۹۰ روز پاک می‌شوند؛ بیلدِ راستی‌آزمایی‌شده روی branch جدا
+`elf` هم هست که همیشگی است:
+
+```sh
+git clone -b elf --depth 1 https://github.com/<you>/Ghost-tooth-ui.git
+# یا:  curl -LO https://github.com/<you>/Ghost-tooth-ui/raw/elf/ghost-tooth-ui.elf
+```
+(برای این branch باید در Settings → Actions → General → Workflow permissions
+گزینه‌ی Read and write روشن باشد؛ اگر نباشد workflow فقط warning می‌دهد.)
 روی tag های `v*` نسخه‌ی قابل حمل در Releases منتشر می‌شود.
 
 **۲ · روی سیستم خودتان.** یک بار ابزارک‌ها را نصب کنید، بعد بیلد بگیرید:

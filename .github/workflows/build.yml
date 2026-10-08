@@ -37,6 +37,8 @@ jobs:
   # enough: those files are produced by `make install`.
   ps5:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write      # to publish the verified ELF on the 'elf' branch
     env:
       PS5_PAYLOAD_SDK: /opt/ps5-payload-sdk
     steps:
@@ -67,21 +69,92 @@ jobs:
           make -B ps5 EMBED_PAYLOAD=1
           cp build/ghost-tooth-ui.elf dist/ghost-tooth-ui-selfcontained.elf
 
-      - name: Sanity check the ELF
+      # Not a cosmetic check: every one of these can fail, and a failure here
+      # means the artifact that people load onto a console is wrong.
+      - name: Verify the ELFs
         run: |
-          set -e
+          set -euo pipefail
           for f in dist/*.elf; do
             echo "== $f"
             ls -l "$f"
             readelf -h "$f" | egrep 'Class|Machine|Type|Entry'
             readelf -d "$f" | egrep 'NEEDED|Shared library' || true
             size "$f"
+            # A payload ELF: ELF64, x86-64, position independent.
+            hdr=$(readelf -h "$f")
+            echo "$hdr" | grep -q 'Class:.*ELF64'
+            echo "$hdr" | grep -q 'Machine:.*Advanced Micro Devices X86-64'
+            echo "$hdr" | grep -q 'Type:.*DYN'
+          # The UI, the tile registration and the log parser must have survived
+          # -ffunction-sections + --gc-sections, or the payload is a hollow shell.
+          strings -a "$f" | grep -q 'applicationCategoryType'
+          strings -a "$f" | grep -q -- '--uninstall-tile'
+          strings -a "$f" | grep -q 'avdtp: streaming'
           done
+          python3 - <<'PY'
+          payload = open("ghost-toothAPI.elf", "rb").read()
+          embed = open("dist/ghost-tooth-ui-selfcontained.elf", "rb").read()
+          plain = open("dist/ghost-tooth-ui.elf", "rb").read()
+          assert payload in embed, "the embedded image is not byte-identical to ghost-toothAPI.elf"
+          assert payload not in plain, "EMBED_PAYLOAD=0 still contains the payload"
+          assert len(embed) - len(plain) > len(payload) // 2, "size delta too small for an embed"
+          print(f"embed ok: payload {len(payload)} B is byte-identical inside the"
+                f" self-contained build ({len(embed)} B vs {len(plain)} B)")
+          PY
 
       - name: Checksums
         run: |
           cd dist
           sha256sum *.elf | tee ghost-tooth-ui.elf.sha256
+
+      # Artifacts expire, and neither they nor release assets are reachable from
+      # every sandbox/CI. So the verified binaries also land on an orphan branch,
+      # which is plain git and therefore always fetchable:
+      #   git clone -b elf --depth 1 https://github.com/<you>/Ghost-tooth-ui.git
+      # Needs "Workflow permissions: Read and write" in the repo settings; if the
+      # runner token is read-only this warns instead of reddening an unrelated PR.
+      - name: Publish on the 'elf' branch
+        id: publish
+        if: >-
+          github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/elfpub && git init -q /tmp/elfpub
+          git -C /tmp/elfpub checkout -q --orphan elf
+          cp dist/*.elf dist/ghost-tooth-ui.elf.sha256 /tmp/elfpub/
+          cp LICENSE /tmp/elfpub/ 2>/dev/null || true
+          {
+            echo "Latest verified console build, produced by the build workflow."
+            echo
+            echo "- run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "- commit built: ${GITHUB_SHA}"
+            echo
+            echo "ghost-tooth-ui.elf                 portable; wants ghost-toothAPI.elf in /data/ghost-toothAPI"
+            echo "ghost-tooth-ui-selfcontained.elf   with ghost-toothAPI.elf embedded (the UI is GPL-3.0-or-later;"
+            echo "                                   the embedded payload stays under its own upstream licence)"
+            echo
+            echo "Force-pushed by every ps5 build and never reviewed - the source of truth is"
+            echo "the tag or branch you build from."
+          } > /tmp/elfpub/README.md
+          git -C /tmp/elfpub add -A
+          git -C /tmp/elfpub -c user.name="github-actions[bot]" \
+                             -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+               commit -qm "ps5 build ${GITHUB_SHA} (run ${GITHUB_RUN_NUMBER})"
+          git -C /tmp/elfpub push -q --force \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            elf:elf
+          echo "https://github.com/${GITHUB_REPOSITORY}/raw/elf/ghost-tooth-ui.elf"
+        continue-on-error: true
+
+      - name: Note if publishing was refused
+        if: steps.publish.outcome == 'failure'
+        run: |
+          echo "::warning::could not push the 'elf' branch - allow writes in" \
+               "Settings -> Actions -> General -> Workflow permissions, or take the" \
+               "ELF from this run's artifacts (ghost-tooth-ui-ps5) instead."
 
       - uses: actions/upload-artifact@v4
         with:
